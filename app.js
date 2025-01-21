@@ -1,113 +1,158 @@
-const grid = document.getElementById("grid");
-const startButton = document.getElementById("start-button");
-const statusText = document.getElementById("status");
-const player1ScoreEl = document.getElementById("player1-score");
-const player2ScoreEl = document.getElementById("player2-score");
+const gameGrid = document.getElementById("grid");
+const startGameButton = document.getElementById("start-button");
+const gameStatusText = document.getElementById("status");
+const redPlayerScore = document.getElementById("player1-score");
+const yellowPlayerScore = document.getElementById("player2-score");
 
-let currentPlayer = "red";
-let board = [];
-let gameActive = false;
-let player1Score = 0;
-let player2Score = 0;
+let activePlayer = "red";
+let gameBoard = [];
+let isGameRunning = false;
+let redPlayerPoints = 0;
+let yellowPlayerPoints = 0;
+let countdownTimer = null;
+let remainingTime = 10;
 
-function initializeBoard() {
-    grid.innerHTML = "";
-    board = Array.from({ length: 6 }, () => Array(7).fill(null));
+function setupGameBoard() {
+    gameGrid.innerHTML = "";
+    gameBoard = Array.from({ length: 6 }, () => Array(7).fill(null));
 
     for (let row = 0; row < 6; row++) {
         for (let col = 0; col < 7; col++) {
-            const cell = document.createElement("div");
-            cell.classList.add("cell");
-            cell.dataset.row = row;
-            cell.dataset.col = col;
-            grid.appendChild(cell);
+            const gridCell = document.createElement("div");
+            gridCell.classList.add("cell");
+            gridCell.dataset.row = row;
+            gridCell.dataset.col = col;
+            gameGrid.appendChild(gridCell);
         }
     }
 }
 
-function checkWin(row, col, color) {
+function hasPlayerWon(row, col, color) {
     const directions = [
         [0, 1], [1, 0], [1, 1], [1, -1],
     ];
 
     for (let [dx, dy] of directions) {
-        let count = 1;
+        let streak = 1;
 
         for (let step = 1; step <= 3; step++) {
-            const r = row + dx * step;
-            const c = col + dy * step;
-            if (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === color) {
-                count++;
+            const newRow = row + dx * step;
+            const newCol = col + dy * step;
+            if (newRow >= 0 && newRow < 6 && newCol >= 0 && newCol < 7 && gameBoard[newRow][newCol] === color) {
+                streak++;
             } else {
                 break;
             }
         }
 
         for (let step = 1; step <= 3; step++) {
-            const r = row - dx * step;
-            const c = col - dy * step;
-            if (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === color) {
-                count++;
+            const newRow = row - dx * step;
+            const newCol = col - dy * step;
+            if (newRow >= 0 && newRow < 6 && newCol >= 0 && newCol < 7 && gameBoard[newRow][newCol] === color) {
+                streak++;
             } else {
                 break;
             }
         }
 
-        if (count >= 4) {
+        if (streak >= 4) {
             return true;
         }
     }
     return false;
 }
 
-function handleCellClick(e) {
-    if (!gameActive) return;
+function handleGridClick(e) {
+    if (!isGameRunning || activePlayer === "yellow") return;
 
-    const cell = e.target;
-    const col = parseInt(cell.dataset.col);
+    const clickedCell = e.target;
+    const col = parseInt(clickedCell.dataset.col);
 
+    dropToken(col, activePlayer);
+    resetTimer();
+    if (isGameRunning && activePlayer === "yellow") aiTakeTurn();
+}
+
+function dropToken(col, player) {
     for (let row = 5; row >= 0; row--) {
-        if (!board[row][col]) {
-            board[row][col] = currentPlayer;
-            const cellToFill = document.querySelector(
+        if (!gameBoard[row][col]) {
+            gameBoard[row][col] = player;
+            const targetCell = document.querySelector(
                 `.cell[data-row="${row}"][data-col="${col}"]`
             );
-            cellToFill.classList.add(currentPlayer);
+            targetCell.classList.add(player);
 
-            if (checkWin(row, col, currentPlayer)) {
-                gameActive = false;
-                statusText.textContent = `Player ${
-                    currentPlayer === "red" ? "1" : "2"
+            if (hasPlayerWon(row, col, player)) {
+                isGameRunning = false;
+                gameStatusText.textContent = `Player ${
+                    player === "red" ? "1" : "2"
                 } wins!`;
-                updateScore();
+                updateScores(player);
                 return;
             }
 
-            currentPlayer = currentPlayer === "red" ? "yellow" : "red";
-            statusText.textContent = `Player ${
-                currentPlayer === "red" ? "1's" : "2's"
-            } turn (${currentPlayer === "red" ? "Red" : "Yellow"})`;
+            activePlayer = activePlayer === "red" ? "yellow" : "red";
+            gameStatusText.textContent = `Player ${
+                activePlayer === "red" ? "1's" : "2's"
+            } turn (${activePlayer === "red" ? "Red" : "Yellow"})`;
             return;
         }
     }
-    statusText.textContent = "Column is full! Choose another.";
+    gameStatusText.textContent = "Column is full! Pick another.";
 }
 
-function updateScore() {
-    if (currentPlayer === "red") {
-        player1Score++;
-        player1ScoreEl.textContent = player1Score;
+function aiTakeTurn() {
+    setTimeout(() => {
+        const availableCols = [];
+        for (let col = 0; col < 7; col++) {
+            if (!gameBoard[0][col]) availableCols.push(col);
+        }
+        const chosenCol = availableCols[Math.floor(Math.random() * availableCols.length)];
+        dropToken(chosenCol, "yellow");
+    }, 1000); // Simulate AI thinking time
+}
+
+function updateScores(player) {
+    if (player === "red") {
+        redPlayerPoints++;
+        redPlayerScore.textContent = redPlayerPoints;
     } else {
-        player2Score++;
-        player2ScoreEl.textContent = player2Score;
+        yellowPlayerPoints++;
+        yellowPlayerScore.textContent = yellowPlayerPoints;
     }
 }
 
-startButton.addEventListener("click", () => {
-    initializeBoard();
-    gameActive = true;
-    currentPlayer = "red";
-    statusText.textContent = "Player 1's turn (Red)";
+function startCountdown() {
+    remainingTime = 10;
+    gameStatusText.textContent += ` | Time left: ${remainingTime}s`;
+    countdownTimer = setInterval(() => {
+        remainingTime--;
+        gameStatusText.textContent = `Player ${
+            activePlayer === "red" ? "1's" : "2's"
+        } turn (${activePlayer === "red" ? "Red" : "Yellow"}) | Time left: ${remainingTime}s`;
+        if (remainingTime <= 0) {
+            clearInterval(countdownTimer);
+            activePlayer = activePlayer === "red" ? "yellow" : "red";
+            gameStatusText.textContent = `Player ${
+                activePlayer === "red" ? "1's" : "2's"
+            } turn (${activePlayer === "red" ? "Red" : "Yellow"})`;
+            resetTimer();
+            if (activePlayer === "yellow") aiTakeTurn();
+        }
+    }, 1000);
+}
+
+function resetTimer() {
+    clearInterval(countdownTimer);
+    startCountdown();
+}
+
+startGameButton.addEventListener("click", () => {
+    setupGameBoard();
+    isGameRunning = true;
+    activePlayer = "red";
+    gameStatusText.textContent = "Player 1's turn (Red)";
+    resetTimer();
 });
 
-grid.addEventListener("click", handleCellClick);
+gameGrid.addEventListener("click", handleGridClick);

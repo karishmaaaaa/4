@@ -90,3 +90,21 @@ button:hover {
     font-weight: 600;
     color: #555;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2); 
+}
+.cell {
+    transition: background-color 0.3s, transform 0.5s ease-in;
+}
+
+.red, .yellow {
+    transform: translateY(0);
+    animation: drop 0.5s ease-in;
+}
+
+@keyframes drop {
+    0% {
+        transform: translateY(-100px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
